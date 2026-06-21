@@ -500,13 +500,8 @@ function getNodeIO(id) {
     case 'D': {
       const c = calcResults['C'] || notCalculated();
       const cin = fromObj(c);
-      const stayRatio = n(nc.stayRatio);
-      const toLRatio  = n(c.waterAbs) > 0 ? n(nc.toL) / n(c.waterAbs) : 0;
-      const cMn = n(c.total) * n(c.mn) / 100;
-      const cNh3n = n(c.total) * n(c.nh3n) / 100;
-      const cMg = n(c.total) * n(c.mg) / 100;
-      const stayMn = cMn * stayRatio, stayNh3n = cNh3n * stayRatio, stayMg = cMg * stayRatio;
-      const toLMn = cMn * toLRatio,  toLNh3n = cNh3n * toLRatio,  toLMg = cMg * toLRatio;
+      const stayMn = n(nc.stayMn), stayNh3n = n(nc.stayNh3n), stayMg = n(nc.stayMg);
+      const toLMn = n(nc.toLMn), toLNh3n = n(nc.toLNh3n), toLMg = n(nc.toLMg);
       const outObj = { water: n(nc.toL) + n(nc.stayWater), slag: n(nc.dryWeight), mn: stayMn + toLMn, nh3n: stayNh3n + toLNh3n, mg: stayMg + toLMg };
       outObj.outDetail = `
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——去一洗涤</label></div>
@@ -527,13 +522,12 @@ function getNodeIO(id) {
     case 'E': {
       const d = calcResults['D'] || notCalculated();
       const r = calcResults['R'] || notCalculated();
-      // E 只接收 D 的渣饼（stayWater + dryWeight），不接收 D 的去中转桶水
+      // E 接收 D 渣饼 + R 回水（固定 500 kg）
       const dIn = { water: n(d.stayWater), slag: n(d.dryWeight), mn: n(d.stayMn), nh3n: n(d.stayNh3n), mg: n(d.stayMg) };
-      const rTotal = n(r.total);
-      const rWater = rTotal * n(r.water) / 100;
-      const rMn = rTotal * n(r.mn) / 100;
-      const rNh3n = rTotal * n(r.nh3n) / 100;
-      const rMg = rTotal * n(r.mg) / 100;
+      const rWater = n(r.backToE);
+      const rMn = n(r.backToEMn);
+      const rNh3n = n(r.backToENh3n);
+      const rMg = n(r.backToEMg);
       const toL = nc.toL || { water: 0, mn: 0, nh3n: 0, mg: 0 };
       const inMn = dIn.mn + rMn, inNh3n = dIn.nh3n + rNh3n, inMg = dIn.mg + rMg;
       const inObj = { water: dIn.water + rWater, slag: dIn.slag, mn: inMn, nh3n: inNh3n, mg: inMg };
@@ -552,6 +546,9 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${rMg.toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       const outObj = { water: n(toL.water) + n(nc.stayWater), slag: n(nc.stayDry), mn: inMn, nh3n: inNh3n, mg: inMg };
+      const stayMn = n(nc.stayTotal) * n(nc.mn) / 100;
+      const stayNh3n = n(nc.stayTotal) * n(nc.nh3n) / 100;
+      const stayMg = n(nc.stayTotal) * n(nc.mg) / 100;
       outObj.outDetail = `
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——去中转桶</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(toL.water).toFixed(3)}</span><span class="unit">kg</span></div>
@@ -562,33 +559,26 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——去一压榨吹扫</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.stayWater).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">${n(nc.stayDry).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${(n(nc.stayTotal) * n(nc.mn) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${(n(nc.stayTotal) * n(nc.nh3n) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${(n(nc.stayTotal) * n(nc.mg) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${stayMn.toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${stayNh3n.toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${stayMg.toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       return { in: inObj, out: outObj };
     }
     case 'F': {
       const e = calcResults['E'] || notCalculated();
       const ein = { water: n(e.stayWater), slag: n(e.stayDry), mn: n(e.stayTotal) * n(e.mn) / 100, nh3n: n(e.stayTotal) * n(e.nh3n) / 100, mg: n(e.stayTotal) * n(e.mg) / 100 };
-      const fToL = nc.toLWater || { mn: 0, nh3n: 0, mg: 0 };
       const cakeMn = n(nc.total) * n(nc.mn) / 100;
       const cakeNh3n = n(nc.total) * n(nc.nh3n) / 100;
       const cakeMg = n(nc.total) * n(nc.mg) / 100;
-      const outObj = { water: n(nc.toL) + n(nc.waterAbs), slag: n(nc.dryWeight), mn: cakeMn + n(fToL.mn), nh3n: cakeNh3n + n(fToL.nh3n), mg: cakeMg + n(fToL.mg) };
+      const outObj = { water: n(nc.waterAbs), slag: n(nc.dryWeight), mn: cakeMn, nh3n: cakeNh3n, mg: cakeMg };
       outObj.outDetail = `
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——去一洗涤渣</label></div>
+        <div class="param-row"><label style="color:#3a5a40;width:80px;">——去无害化化浆</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.waterAbs).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">${n(nc.dryWeight).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${cakeMn.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${cakeNh3n.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${cakeMg.toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——去中转桶</label></div>
-        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.toL).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">0.000</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(fToL.mn).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(fToL.nh3n).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(fToL.mg).toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       return { in: ein, out: outObj };
     }
@@ -660,7 +650,7 @@ function getNodeIO(id) {
     case 'I': {
       const h = calcResults['H'] || notCalculated();
       const q = calcResults['Q'] || notCalculated();
-      // I 只接收 H 的渣饼（stayWater + dryWeight），不接收 H 的去吹脱水
+      // I 接收 H 渣饼 + Q（ZA 蒸氨后）回水
       const hIn = { water: n(h.stayWater), slag: n(h.dryWeight), mn: n(h.stayMn), nh3n: n(h.stayNh3n), mg: n(h.stayMg) };
       const qOut = fromObj(q);
       const toL = nc.toL || { water: 0, mn: 0, nh3n: 0, mg: 0 };
@@ -673,7 +663,7 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${hIn.mn.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${hIn.nh3n.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${hIn.mg.toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自中和回水</label></div>
+        <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自蒸氨回水</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${qOut.water.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">0.000</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${qOut.mn.toFixed(3)}</span><span class="unit">kg</span></div>
@@ -681,6 +671,9 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${qOut.mg.toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       const outObj = { water: n(toL.water) + n(nc.stayWater), slag: n(nc.stayDry), mn: inMn2, nh3n: inNh3n2, mg: inMg2 };
+      const stayMn2 = n(nc.stayTotal) * n(nc.mn) / 100;
+      const stayNh3n2 = n(nc.stayTotal) * n(nc.nh3n) / 100;
+      const stayMg2 = n(nc.stayTotal) * n(nc.mg) / 100;
       outObj.outDetail = `
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——去洗涤中转</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(toL.water).toFixed(3)}</span><span class="unit">kg</span></div>
@@ -691,33 +684,26 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——去二压榨吹扫</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.stayWater).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">${n(nc.stayDry).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${(n(nc.stayTotal) * n(nc.mn) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${(n(nc.stayTotal) * n(nc.nh3n) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${(n(nc.stayTotal) * n(nc.mg) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${stayMn2.toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${stayNh3n2.toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${stayMg2.toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       return { in: inObj, out: outObj };
     }
     case 'J': {
       const i = calcResults['I'] || notCalculated();
       const iin = { water: n(i.stayWater), slag: n(i.stayDry), mn: n(i.stayTotal) * n(i.mn) / 100, nh3n: n(i.stayTotal) * n(i.nh3n) / 100, mg: n(i.stayTotal) * n(i.mg) / 100 };
-      const jToL = nc.toLWater || { mn: 0, nh3n: 0, mg: 0 };
       const cakeMn = n(nc.total) * n(nc.mn) / 100;
       const cakeNh3n = n(nc.total) * n(nc.nh3n) / 100;
       const cakeMg = n(nc.total) * n(nc.mg) / 100;
-      const outObj = { water: n(nc.toL) + n(nc.waterAbs), slag: n(nc.dryWeight), mn: cakeMn + n(jToL.mn), nh3n: cakeNh3n + n(jToL.nh3n), mg: cakeMg + n(jToL.mg) };
+      const outObj = { water: n(nc.waterAbs), slag: n(nc.dryWeight), mn: cakeMn, nh3n: cakeNh3n, mg: cakeMg };
       outObj.outDetail = `
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——去二洗涤渣</label></div>
+        <div class="param-row"><label style="color:#3a5a40;width:80px;">——最终出渣</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.waterAbs).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">${n(nc.dryWeight).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${cakeMn.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${cakeNh3n.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${cakeMg.toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——去吹脱</label></div>
-        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.toL).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">0.000</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(jToL.mn).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(jToL.nh3n).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(jToL.mg).toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       return { in: iin, out: outObj };
     }
@@ -729,11 +715,10 @@ function getNodeIO(id) {
     case 'L': {
       const d = calcResults['D'] || notCalculated();
       const e = calcResults['E'] || notCalculated();
-      const f = calcResults['F'] || notCalculated();
+      const r = calcResults['R'] || notCalculated();
       const eToL = e.toL || { water: 0, mn: 0, nh3n: 0, mg: 0 };
-      const fToLWater = f.toLWater || { mn: 0, nh3n: 0, mg: 0 };
-      const dWater = n(d.toL), eWater = n(eToL.water), fWater = n(f.toL);
-      const inObj = { water: dWater + eWater + fWater, slag: 0, mn: n(d.toLMn) + eWater * n(eToL.mn) / 100 + n(fToLWater.mn), nh3n: n(d.toLNh3n) + eWater * n(eToL.nh3n) / 100 + n(fToLWater.nh3n), mg: n(d.toLMg) + eWater * n(eToL.mg) / 100 + n(fToLWater.mg) };
+      const dWater = n(d.toL), eWater = n(eToL.water), rToLZ2 = n(r.toLZ2);
+      const inObj = { water: dWater + eWater + rToLZ2, slag: 0, mn: n(d.toLMn) + eWater * n(eToL.mn) / 100 + n(r.toLZ2Mn), nh3n: n(d.toLNh3n) + eWater * n(eToL.nh3n) / 100 + n(r.toLZ2Nh3n), mg: n(d.toLMg) + eWater * n(eToL.mg) / 100 + n(r.toLZ2Mg) };
       inObj.inDetail = `
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自一进料</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${dWater.toFixed(3)}</span><span class="unit">kg</span></div>
@@ -747,12 +732,12 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${(eWater * n(eToL.mn) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${(eWater * n(eToL.nh3n) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${(eWater * n(eToL.mg) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自一压榨吹扫</label></div>
-        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${fWater.toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自XZ2去LZ2</label></div>
+        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${rToLZ2.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">0.000</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(fToLWater.mn).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(fToLWater.nh3n).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(fToLWater.mg).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(r.toLZ2Mn).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(r.toLZ2Nh3n).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(r.toLZ2Mg).toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       const outObj = { water: n(nc.total), slag: 0, mn: n(nc.total) * n(nc.mn) / 100, nh3n: n(nc.total) * n(nc.nh3n) / 100, mg: n(nc.total) * n(nc.mg) / 100 };
       outObj.outDetail = `
@@ -773,10 +758,9 @@ function getNodeIO(id) {
     }
     case 'M': {
       const h = calcResults['H'] || notCalculated();
-      const j = calcResults['J'] || notCalculated();
-      const hWater = n(h.toL), jWater = n(j.toL);
-      const jToLWater = j.toLWater || { mn: 0, nh3n: 0, mg: 0 };
-      const inObj = { water: hWater + jWater, slag: 0, mn: n(h.toLMn) + n(jToLWater.mn), nh3n: n(h.toLNh3n) + n(jToLWater.nh3n), mg: n(h.toLMg) + n(jToLWater.mg) };
+      const r = calcResults['R'] || notCalculated();
+      const hWater = n(h.toL), rToLZ2 = n(r.toLZ2);
+      const inObj = { water: hWater + rToLZ2, slag: 0, mn: n(h.toLMn) + n(r.toLZ2Mn), nh3n: n(h.toLNh3n) + n(r.toLZ2Nh3n), mg: n(h.toLMg) + n(r.toLZ2Mg) };
       inObj.inDetail = `
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自二进料</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${hWater.toFixed(3)}</span><span class="unit">kg</span></div>
@@ -784,12 +768,12 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(h.toLMn).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(h.toLNh3n).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(h.toLMg).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自二压榨吹扫</label></div>
-        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${jWater.toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自XZ2去LZ2</label></div>
+        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${rToLZ2.toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">0.000</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(jToLWater.mn).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(jToLWater.nh3n).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(jToLWater.mg).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(r.toLZ2Mn).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(r.toLZ2Nh3n).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(r.toLZ2Mg).toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       return { in: inObj, out: fromObj(nc) };
     }
@@ -831,7 +815,7 @@ function getNodeIO(id) {
       const i = calcResults['I'] || notCalculated();
       const iToL = i.toL || { water: 0, mn: 0, nh3n: 0, mg: 0 };
       const inObj = { water: n(iToL.water), slag: 0, mn: n(iToL.water) * n(iToL.mn) / 100, nh3n: n(iToL.water) * n(iToL.nh3n) / 100, mg: n(iToL.water) * n(iToL.mg) / 100 };
-      const outObj = { water: n(nc.total), slag: 0, mn: n(nc.total) * n(nc.mn) / 100, nh3n: n(nc.total) * n(nc.nh3n) / 100, mg: n(nc.total) * n(nc.mg) / 100 };
+      const outObj = { water: n(nc.backToE) + n(nc.toLZ2), slag: 0, mn: n(nc.backToEMn) + n(nc.toLZ2Mn), nh3n: n(nc.backToENh3n) + n(nc.toLZ2Nh3n), mg: n(nc.backToEMg) + n(nc.toLZ2Mg) };
       inObj.inDetail = `
         <div class="param-row"><label style="color:#3a5a40;width:80px;">——来自二洗涤</label></div>
         <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(iToL.water).toFixed(3)}</span><span class="unit">kg</span></div>
@@ -841,12 +825,18 @@ function getNodeIO(id) {
         <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${(n(iToL.water) * n(iToL.mg) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       outObj.outDetail = `
-        <div class="param-row"><label style="color:#3a5a40;width:80px;">——去一洗涤</label></div>
-        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.total).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#3a5a40;width:80px;">——回一洗涤</label></div>
+        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.backToE).toFixed(3)}</span><span class="unit">kg</span></div>
         <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">0.000</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${(n(nc.total) * n(nc.mn) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${(n(nc.total) * n(nc.nh3n) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
-        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${(n(nc.total) * n(nc.mg) / 100).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(nc.backToEMn).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(nc.backToENh3n).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(nc.backToEMg).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#3a5a40;width:80px;">——去LZ2</label></div>
+        <div class="param-row"><label style="color:#888;width:80px;">水</label><span class="ro-value">${n(nc.toLZ2).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">渣</label><span class="ro-value">0.000</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">锰</label><span class="ro-value">${n(nc.toLZ2Mn).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">氨氮</label><span class="ro-value">${n(nc.toLZ2Nh3n).toFixed(3)}</span><span class="unit">kg</span></div>
+        <div class="param-row"><label style="color:#888;width:80px;">镁</label><span class="ro-value">${n(nc.toLZ2Mg).toFixed(3)}</span><span class="unit">kg</span></div>
       `;
       return { in: inObj, out: outObj };
     }
@@ -892,7 +882,7 @@ function buildParamsHtml(id) {
   const p = nodeById(id).params || {};
   const fields = [];
   if (id === 'A') {
-    fields.push(['总重', 'p-total', p.total ?? 1000, 'kg'], ['含水率', 'p-water', p.water ?? 25, '%'], ['锰', 'p-mn', p.mn ?? 1, '%'], ['氨氮', 'p-nh3n', p.nh3n ?? 0.5, '%'], ['镁', 'p-mg', p.mg ?? 0.5, '%']);
+    fields.push(['总重', 'p-total', p.total ?? 1333.33, 'kg'], ['含水率', 'p-water', p.water ?? 25, '%'], ['锰', 'p-mn', p.mn ?? 1, '%'], ['氨氮', 'p-nh3n', p.nh3n ?? 0.5, '%'], ['镁', 'p-mg', p.mg ?? 1.05, '%']);
   } else if (id === 'C' || id === 'G') {
     fields.push(['渣水比', 'p-slagWaterRatio', p.slagWaterRatio ?? 3, '水:渣']);
   } else if (id === 'L') {
@@ -910,9 +900,9 @@ function buildParamsHtml(id) {
   } else if (id === 'M') {
     fields.push(['吹脱率', 'p-blowRate', p.blowRate ?? 20, '%'], ['吹脱后氨氮', 'p-blowOutNh3n', p.outNh3n ?? 0, 'mg/L']);
   } else if (id === 'D' || id === 'H') {
-    fields.push(['渣中含水', 'p-slagWater', p.slagWater ?? 40, '%']);
+    fields.push(['渣饼含水', 'p-slagWater', p.slagWater ?? 500, 'kg']);
   } else if (id === 'E' || id === 'I') {
-    fields.push(['洗涤效率', 'p-washEff', p.washEff ?? 80, '%']);
+    fields.push(['洗涤效率', 'p-washEff', p.washEff ?? 85, '%'], ['洗涤后渣含水', 'p-washSlagWater', p.washSlagWater ?? 333.33, 'kg']);
   } else if (id === 'F' || id === 'J') {
     fields.push(['出渣含水率', 'p-outSlagWater', p.outSlagWater ?? 25, '%']);
   }
@@ -983,7 +973,7 @@ function n(v) { return isNaN(v) || v == null ? 0 : Number(v); }
 
 function calcC() {
   return cached('C', () => {
-  const a = nodeById('A').params || { total: 1000, water: 25, mn: 1, nh3n: 0.5, mg: 0.5 };
+  const a = nodeById('A').params || { total: 1333.33, water: 25, mn: 1, nh3n: 0.5, mg: 1.4 };
   const cp = nodeById('C').params || { slagWaterRatio: 3 };
   const lp = nodeById('L').params || { toN: 500 };
   const fromLRaw = lp.backToC || { water: 0, mn: 0, nh3n: 0, mg: 0 };
@@ -1005,15 +995,14 @@ function calcC() {
 function calcD() {
   return cached('D', () => {
   const c = calcResults['C'] || notCalculated();
-  const dp = nodeById('D').params || { slagWater: 40 };
-  const dwPct = n(dp.slagWater);
-  const dryWeight = n(c.dryWeight);                  // 干渣全部进入 D
+  const dp = nodeById('D').params || { slagWater: 500 };
+  const stayWaterSet = n(dp.slagWater);             // 渣饼含水，kg
+  const dryWeight = n(c.dryWeight);                 // 干渣全部进入 D
   const cWater = n(c.waterAbs);
   const cTotal = n(c.total);
-  const dWaterSet = dryWeight / (1 - dwPct / 100) - dryWeight; // 设定保留水
-  const stayWater = Math.min(cWater, dWaterSet);     // 实际去一洗涤的水
-  const toL = Math.max(0, cWater - dWaterSet);       // 多余去中转桶的水
-  const outTotal = dryWeight + cWater;               // D 实际进入总量
+  const stayWater = Math.min(cWater, stayWaterSet); // 实际去一洗涤的渣饼水
+  const toL = Math.max(0, cWater - stayWater);      // 多余去中转桶的水
+  const outTotal = dryWeight + cWater;                // D 实际进入总量
   // 元素溶解在水中，按 C 总水量比例分配
   const stayRatio = cWater > 0 ? stayWater / cWater : 0;
   const toLRatio  = cWater > 0 ? toL / cWater : 0;
@@ -1045,38 +1034,43 @@ function calcD() {
 function calcE() {
   return cached('E', () => {
   const d = calcResults['D'] || notCalculated();
-  const ep = nodeById('E').params || { washEff: 80 };
-  const r = nodeById('R').params || { total: 0, water: 0, mn: 0, nh3n: 0, mg: 0 };
+  const ep = nodeById('E').params || { washEff: 85, washSlagWater: 333.33 };
+  const r = nodeById('R').params || { total: 0, water: 0, mn: 0, nh3n: 0, mg: 0, toLZ2: 0 };
   const eff = n(ep.washEff) / 100;
+  const washSlagWater = n(ep.washSlagWater) || 333.33; // 洗涤后渣饼含水 kg
 
-  // 全部质量单位：kg
-  const rTotal = n(r.total);                 // R 回水总重 kg
-  const rWater = rTotal * n(r.water) / 100;  // R 回水水量 kg
-  const rMn    = rTotal * n(r.mn) / 100;     // R 回水锰 kg
-  const rNh3n  = rTotal * n(r.nh3n) / 100;   // R 回水氨氮 kg
-  const rMg    = rTotal * n(r.mg) / 100;     // R 回水镁 kg
+  // R 回水（先取固定 500 kg 回一洗涤，多余去 LZ2）
+  const rTotal = n(r.total);
+  const rWater = Math.min(500, rTotal); // 回一洗涤的水量 kg
+  const rToLZ2 = Math.max(0, rTotal - rWater); // 多余去 LZ2
+  const rRatio = rTotal > 0 ? rWater / rTotal : 0;
+  const rMn    = rTotal * n(r.mn) / 100 * rRatio;
+  const rNh3n  = rTotal * n(r.nh3n) / 100 * rRatio;
+  const rMg    = rTotal * n(r.mg) / 100 * rRatio;
+  const rToLZ2Mn    = rTotal * n(r.mn) / 100 - rMn;
+  const rToLZ2Nh3n  = rTotal * n(r.nh3n) / 100 - rNh3n;
+  const rToLZ2Mg    = rTotal * n(r.mg) / 100 - rMg;
 
   const dDry = n(d.dryWeight);
-  const dWater = n(d.waterAbs);
-  const stayDry = dDry;                           // 干渣全部留下 kg
-  const toLWater = dWater * eff;                     // 去中转桶水量 kg
-  const stayWater = dWater * (1 - eff) + rWater;     // 留在渣里水量 kg
-  const stayTotal = stayDry + stayWater;               // kg
-  const mixWater = dWater + rWater;                  // 洗涤体系总水量 kg
+  const dWater = n(d.stayWater);                    // D 渣饼水 kg
+  const stayDry = dDry;                             // 干渣全部留下 kg
+  const inWater = dWater + rWater;                  // 一洗涤体系总进水 kg
+  const stayWater = washSlagWater;                  // 洗涤后渣饼保留水 kg
+  const toLWater = Math.max(0, inWater - stayWater); // 去中转桶/出压榨水 kg
+  const stayTotal = stayDry + stayWater;             // kg
 
-  // 元素总量 = D 进入一洗涤的溶质 + R 回水元素，kg
+  // 元素总量 = D 渣饼溶质 + R 回水元素，kg
   const inMn   = n(d.stayMn) + rMn;
   const inNh3n = n(d.stayNh3n) + rNh3n;
   const inMg   = n(d.stayMg) + rMg;
 
-  // 元素按水量比例分配
-  const toLMn   = mixWater > 0 ? inMn   * (toLWater / mixWater) : 0;
-  const toLNh3n = mixWater > 0 ? inNh3n * (toLWater / mixWater) : 0;
-  const toLMg   = mixWater > 0 ? inMg   * (toLWater / mixWater) : 0;
-
-  const stayMn   = mixWater > 0 ? inMn   * (stayWater / mixWater) : 0;
-  const stayNh3n = mixWater > 0 ? inNh3n * (stayWater / mixWater) : 0;
-  const stayMg   = mixWater > 0 ? inMg   * (stayWater / mixWater) : 0;
+  // 洗涤效率仅作用于渣饼原有溶质；回水溶质进入渣饼，不重复洗出
+  const toLMn   = n(d.stayMn) * eff;
+  const toLNh3n = n(d.stayNh3n) * eff;
+  const toLMg   = n(d.stayMg) * eff;
+  const stayMn   = n(d.stayMn) * (1 - eff) + rMn;
+  const stayNh3n = n(d.stayNh3n) * (1 - eff) + rNh3n;
+  const stayMg   = n(d.stayMg) * (1 - eff) + rMg;
 
   return {
     eff,
@@ -1093,7 +1087,8 @@ function calcE() {
       mn: toLWater > 0 ? toLMn / toLWater * 100 : 0,
       nh3n: toLWater > 0 ? toLNh3n / toLWater * 100 : 0,
       mg: toLWater > 0 ? toLMg / toLWater * 100 : 0
-    }
+    },
+    rToLZ2, rToLZ2Mn, rToLZ2Nh3n, rToLZ2Mg
   };
   });
 }
@@ -1101,36 +1096,21 @@ function calcE() {
 function calcF() {
   return cached('F', () => {
   const e = calcResults['E'] || notCalculated();
-  const fp = nodeById('F').params || { outSlagWater: 25 };
-  const fw = n(fp.outSlagWater);
   const eDry = n(e.stayDry);
   const eWater = n(e.stayWater);
   const eTotal = n(e.stayTotal);
-  const fTotal = eDry / (1 - fw / 100);
-  const fWater = fTotal - eDry;
-  const toL = Math.max(0, eWater - fWater);
-  const stayRatio = eWater > 0 ? fWater / eWater : 1;
-  const toLRatio  = eWater > 0 ? toL / eWater : 0;
-  // 溶质随水量分配，质量守恒
-  const mnMass   = eTotal * n(e.mn) / 100;
-  const nh3nMass = eTotal * n(e.nh3n) / 100;
-  const mgMass   = eTotal * n(e.mg) / 100;
-  const stayMn   = mnMass * stayRatio;
-  const stayNh3n = nh3nMass * stayRatio;
-  const stayMg   = mgMass * stayRatio;
-  const toLMn    = mnMass * toLRatio;
-  const toLNh3n  = nh3nMass * toLRatio;
-  const toLMg    = mgMass * toLRatio;
+  const stayTotal = eDry + eWater;
+  // F 直接承接一洗涤后的渣饼；洗涤去中转水已在 E 计算
   return {
-    total: fTotal,
+    total: stayTotal,
     dryWeight: eDry,
-    waterAbs: fWater,
-    toL: toL,
-    toLWater: { water: toL, mn: toLMn, nh3n: toLNh3n, mg: toLMg },
-    water: fTotal > 0 ? fWater / fTotal * 100 : 0,
-    mn: fTotal > 0 ? stayMn / fTotal * 100 : 0,
-    nh3n: fTotal > 0 ? stayNh3n / fTotal * 100 : 0,
-    mg: fTotal > 0 ? stayMg / fTotal * 100 : 0
+    waterAbs: eWater,
+    toL: 0,
+    toLWater: { water: 0, mn: 0, nh3n: 0, mg: 0 },
+    water: stayTotal > 0 ? eWater / stayTotal * 100 : 0,
+    mn: e.mn,
+    nh3n: e.nh3n,
+    mg: e.mg
   };
   });
 }
@@ -1138,24 +1118,21 @@ function calcF() {
 function calcM() {
   return cached('M', () => {
   const h = calcResults['H'] || notCalculated();
-  const j = calcResults['J'] || notCalculated();
+  const r = calcResults['R'] || notCalculated();
   const mp = nodeById('M').params || { blowRate: 20, outNh3n: 0 };
-  const mWater = h.toL + j.toL;
+  // LZ2 接收 H 去吹脱水 + XZ2 多余来水
+  const mWater = n(h.toL) + n(r.toLZ2);
   const mTotal = mWater;
   if (mTotal <= 0) return { total: 0, waterAbs: 0, water: 0, mn: 0, nh3n: 0, mg: 0 };
-  // 溶质按实际进入吹脱的水量质量加和，浓度以水中质量百分数表示
-  const hToLMn = n(h.toLMn), hToLNh3n = n(h.toLNh3n), hToLMg = n(h.toLMg);
-  const jToLWater = j.toLWater || { mn: 0, nh3n: 0, mg: 0 };
-  const mn = (hToLMn + n(jToLWater.mn)) / mWater * 100;
-  let nh3n = (hToLNh3n + n(jToLWater.nh3n)) / mWater * 100;
-  const mg = (hToLMg + n(jToLWater.mg)) / mWater * 100;
-  // 吹脱：优先使用吹脱率
+  const mn   = (n(h.toLMn)   + n(r.toLZ2Mn))   / mWater * 100;
+  let nh3n = (n(h.toLNh3n) + n(r.toLZ2Nh3n)) / mWater * 100;
+  const mg   = (n(h.toLMg)   + n(r.toLZ2Mg))   / mWater * 100;
+  // 吹脱氨氮
   const blowRate = Number(mp.blowRate) / 100;
   const outNh3n = Number(mp.outNh3n);
   if (blowRate > 0) {
     nh3n = nh3n * (1 - blowRate);
   } else if (outNh3n > 0) {
-    // 用出水浓度反算去除率（以 mg/L 近似等于 %）
     nh3n = Math.min(nh3n, outNh3n / 10000);
   }
   return { total: mTotal, waterAbs: mWater, water: 100, mn, nh3n, mg };
@@ -1167,13 +1144,19 @@ function calcT() {
   const m = calcResults['M'] || notCalculated();
   const tp = nodeById('T').params || { mgRemoval: 20 };
   const mgRemoval = Number(tp.mgRemoval) / 100;
+  // 沉淀：水不变，镁按去除比例减少
+  const inWater = n(m.waterAbs);
+  const inMn = inWater * n(m.mn) / 100;
+  const inNh3n = inWater * n(m.nh3n) / 100;
+  const inMg = inWater * n(m.mg) / 100;
+  const outMg = inMg * (1 - mgRemoval);
   return {
-    total: m.total,
-    waterAbs: m.waterAbs,
+    total: inWater,
+    waterAbs: inWater,
     water: 100,
-    mn: m.mn,
-    nh3n: m.nh3n,
-    mg: m.mg * (1 - mgRemoval)
+    mn: inWater > 0 ? inMn / inWater * 100 : 0,
+    nh3n: inWater > 0 ? inNh3n / inWater * 100 : 0,
+    mg: inWater > 0 ? outMg / inWater * 100 : 0
   };
   });
 }
@@ -1190,7 +1173,7 @@ function calcG() {
   const ratio = Number(gp.slagWaterRatio) || 3;
   const targetWater = dryWeight * ratio;
   const inWater = n(f.waterAbs) + n(t.waterAbs);
-  // G 不直接溢流，所有水都进入 H 二进料；不足时补水到目标渣水比
+  // 无害化化浆：F 渣饼水 + T 回水，不足时补水到目标渣水比
   const makeup = Math.max(0, targetWater - inWater);
   const waterAbs = inWater + makeup;
   const total = dryWeight + waterAbs;
@@ -1213,15 +1196,14 @@ function calcG() {
 function calcH() {
   return cached('H', () => {
   const g = calcResults['G'] || notCalculated();
-  const hp = nodeById('H').params || { slagWater: 40 };
-  const hw = Number(hp.slagWater);
+  const hp = nodeById('H').params || { slagWater: 500 };
+  const stayWaterSet = n(hp.slagWater);          // 渣饼含水，kg
   const dryWeight = n(g.dryWeight);
   const gWater = n(g.waterAbs);
   const gTotal = n(g.total);
-  const hWaterSet = dryWeight / (1 - hw / 100) - dryWeight; // 设定保留水
-  const stayWater = Math.min(gWater, hWaterSet);             // 实际去二洗涤的水
-  const toL = Math.max(0, gWater - hWaterSet);               // 多余去吹脱的水
-  const outTotal = dryWeight + gWater;                       // H 实际进入总量
+  const stayWater = Math.min(gWater, stayWaterSet); // 实际去二洗涤的渣饼水
+  const toL = Math.max(0, gWater - stayWater);    // 多余去吹脱的水
+  const outTotal = dryWeight + gWater;              // H 实际进入总量
   const stayRatio = gWater > 0 ? stayWater / gWater : 0;
   const toLRatio  = gWater > 0 ? toL / gWater : 0;
   const inMn   = gTotal * n(g.mn) / 100;
@@ -1252,21 +1234,23 @@ function calcL() {
   return cached('L', () => {
   const d = calcResults['D'] || notCalculated();
   const e = calcResults['E'] || notCalculated();
-  const f = calcResults['F'] || notCalculated();
+  const r = calcResults['R'] || notCalculated();
   const lp = nodeById('L').params || { toN: 500 };
   const dToL = n(d.toL);
   const eToLWater = n(e.toL && e.toL.water);
-  const fToL = n(f.toL);
-  const inWater = dToL + eToLWater + fToL;
-  const toN = n(lp.toN);
+  const rToLZ2 = n(r.toLZ2); // XZ2 多余去 LZ2/M 的水量，先并入 LZ1 再统一分配
+  const inWater = dToL + eToLWater + rToLZ2;
+  const toN = n(lp.toN);                        // 去蒸氨/沉锰的水量
   const backToCWater = Math.max(0, inWater - toN);
   let mn = 0, nh3n = 0, mg = 0;
   if (inWater > 0) {
     const dMnMass = n(d.toLMn), dNh3nMass = n(d.toLNh3n), dMgMass = n(d.toLMg);
-    const fToLWater = f.toLWater || { mn: 0, nh3n: 0, mg: 0 };
-    mn = (dMnMass + eToLWater * n(e.toL && e.toL.mn) / 100 + n(fToLWater.mn)) / inWater * 100;
-    nh3n = (dNh3nMass + eToLWater * n(e.toL && e.toL.nh3n) / 100 + n(fToLWater.nh3n)) / inWater * 100;
-    mg = (dMgMass + eToLWater * n(e.toL && e.toL.mg) / 100 + n(fToLWater.mg)) / inWater * 100;
+    const eMnMass = eToLWater * n(e.toL && e.toL.mn) / 100;
+    const eNh3nMass = eToLWater * n(e.toL && e.toL.nh3n) / 100;
+    const eMgMass = eToLWater * n(e.toL && e.toL.mg) / 100;
+    mn = (dMnMass + eMnMass + n(r.toLZ2Mn)) / inWater * 100;
+    nh3n = (dNh3nMass + eNh3nMass + n(r.toLZ2Nh3n)) / inWater * 100;
+    mg = (dMgMass + eMgMass + n(r.toLZ2Mg)) / inWater * 100;
   }
   return {
     total: inWater,
@@ -1293,16 +1277,15 @@ function calcN() {
   const inMn   = inWater * n(l.mn) / 100;
   const inNh3n = inWater * n(l.nh3n) / 100;
   const inMg   = inWater * n(l.mg) / 100;
-  const outMnKg = inWater * n(np.outMn) / 1e6;
-  const mnSalt = Math.min(outMnKg, inMn);
+  // 沉锰：把所有锰沉淀为锰盐带走，出水锰≈0（与表格 N→O 锰=0 一致）
+  const mnSalt = inMn;
   const outWater = inWater;
-  const outMn    = Math.max(0, inMn - mnSalt);
   const outTotal = outWater;
   return {
     total: outTotal,
     waterAbs: outWater,
     water: 100,
-    mn: outTotal > 0 ? outMn / outTotal * 100 : 0,
+    mn: 0,
     nh3n: outTotal > 0 ? inNh3n / outTotal * 100 : 0,
     mg: outTotal > 0 ? inMg / outTotal * 100 : 0,
     mnSalt
@@ -1334,20 +1317,20 @@ function calcP() {
   const inMn   = inWater * n(o.mn) / 100;
   const inNh3n = inWater * n(o.nh3n) / 100;
   const inMg   = inWater * n(o.mg) / 100;
-  const outNh3nTarget = n(pp.outNh3n) / 10000;
-  const outNh3nKg = Math.min(inNh3n, inWater * outNh3nTarget);
-  const removedNh3n = Math.max(0, inNh3n - outNh3nKg);
-  const slagNh3n = removedNh3n;
+  // 蒸氨后氨氮、锰、镁均按目标出水浓度 50 mg/L 控制（与表格 ZA 蒸氨后 M≈0.025 kg 对应）
+  const outTarget = n(pp.outNh3n) / 10000; // mg/L → 水中质量百分数
+  const outNh3nKg = Math.min(inNh3n, inWater * outTarget / 100);
+  const outMnKg   = Math.min(inMn,   inWater * outTarget / 100);
+  const outMgKg   = Math.min(inMg,   inWater * outTarget / 100);
   const outWater = inWater;
   const outTotal = outWater;
   return {
     total: outTotal,
     waterAbs: outWater,
     water: 100,
-    mn: outTotal > 0 ? inMn / outTotal * 100 : 0,
+    mn: outTotal > 0 ? outMnKg / outTotal * 100 : 0,
     nh3n: outTotal > 0 ? outNh3nKg / outTotal * 100 : 0,
-    mg: outTotal > 0 ? inMg / outTotal * 100 : 0,
-    slagNh3n
+    mg: outTotal > 0 ? outMgKg / outTotal * 100 : 0
   };
   });
 }
@@ -1372,36 +1355,35 @@ function calcI() {
   return cached('I', () => {
   const h = calcResults['H'] || notCalculated();
   const q = calcResults['Q'] || notCalculated();
-  const ip = nodeById('I').params || { washEff: 80 };
-  const eff = Number(ip.washEff) / 100;
+  const ip = nodeById('I').params || { washEff: 85, washSlagWater: 333.33 };
+  const eff = n(ip.washEff) / 100;
+  const washSlagWater = n(ip.washSlagWater) || 333.33; // 二洗涤后渣饼含水 kg
 
-  // 全部质量单位：kg
-  const qWater = q.waterAbs;                        // 中和回水 = Q 总水量 kg
-  const qMn    = q.total * q.mn / 100;              // Q 回水锰 kg
-  const qNh3n  = q.total * q.nh3n / 100;             // Q 回水氨氮 kg
-  const qMg    = q.total * q.mg / 100;              // Q 回水镁 kg
+  const qWater = n(q.waterAbs);                       // 中和回水 kg
+  const qMn    = n(q.total) * n(q.mn) / 100;
+  const qNh3n  = n(q.total) * n(q.nh3n) / 100;
+  const qMg    = n(q.total) * n(q.mg) / 100;
 
-  const stayDry = h.dryWeight;                      // 干渣全部留下 kg
-  const hWater = n(h.stayWater);                    // H 实际去二洗涤的水
-  const hMn    = n(h.stayMn), hNh3n = n(h.stayNh3n), hMg = n(h.stayMg); // H 带来的溶质
-  const toLWater = hWater * eff;                      // 去中转桶水量 kg
-  const stayWater = hWater * (1 - eff) + qWater;    // 留在渣里水量 kg
-  const stayTotal = stayDry + stayWater;            // kg
-  const mixWater = hWater + qWater;                 // 洗涤体系总水量 kg
+  const stayDry = n(h.dryWeight);                     // 干渣全部留下 kg
+  const hWater = n(h.stayWater);                      // H 渣饼水 kg
+  const hMn    = n(h.stayMn), hNh3n = n(h.stayNh3n), hMg = n(h.stayMg);
+  const inWater = hWater + qWater;                    // 二洗涤体系总进水 kg
+  const stayWater = washSlagWater;                    // 洗涤后渣饼保留水 kg
+  const toLWater = Math.max(0, inWater - stayWater);  // 去洗涤中转 kg
+  const stayTotal = stayDry + stayWater;              // kg
 
-  // 元素总量 = H 去二洗涤的溶质 + Q 回水元素，kg
+  // 元素总量
   const inMn   = hMn + qMn;
   const inNh3n = hNh3n + qNh3n;
   const inMg   = hMg + qMg;
 
-  // 元素按水量比例分配
-  const toLMn   = mixWater > 0 ? inMn   * (toLWater / mixWater) : 0;
-  const toLNh3n = mixWater > 0 ? inNh3n * (toLWater / mixWater) : 0;
-  const toLMg   = mixWater > 0 ? inMg   * (toLWater / mixWater) : 0;
-
-  const stayMn   = mixWater > 0 ? inMn   * (stayWater / mixWater) : 0;
-  const stayNh3n = mixWater > 0 ? inNh3n * (stayWater / mixWater) : 0;
-  const stayMg   = mixWater > 0 ? inMg   * (stayWater / mixWater) : 0;
+  // 洗涤效率仅作用于渣饼原有溶质；回水溶质进入渣饼，不重复洗出
+  const toLMn   = hMn * eff;
+  const toLNh3n = hNh3n * eff;
+  const toLMg   = hMg * eff;
+  const stayMn   = hMn * (1 - eff) + qMn;
+  const stayNh3n = hNh3n * (1 - eff) + qNh3n;
+  const stayMg   = hMg * (1 - eff) + qMg;
 
   return {
     eff,
@@ -1425,16 +1407,27 @@ function calcI() {
 
 function calcR() {
   const i = calcResults['I'] || notCalculated();
-  // R（洗涤中转）= 二洗涤 I 的去中转水量和元素
-  const total = n(i.toLTotal);
   const toL = i.toL || { water: 0, mn: 0, nh3n: 0, mg: 0 };
-  const water = total > 0 ? n(toL.water) / total * 100 : 0;
+  const total = n(toL.water);
+  // XZ2 中转桶：固定 500 kg 回一洗涤 E，多余去 LZ2/M
+  const backToE = Math.min(500, total);
+  const toLZ2 = Math.max(0, total - backToE);
+  const ratioE = total > 0 ? backToE / total : 0;
+  const ratioLZ2 = total > 0 ? toLZ2 / total : 0;
   return {
     total,
-    water,
+    water: total > 0 ? 100 : 0,
     mn: n(toL.mn),
     nh3n: n(toL.nh3n),
-    mg: n(toL.mg)
+    mg: n(toL.mg),
+    backToE,
+    backToEMn: n(toL.mn) * ratioE,
+    backToENh3n: n(toL.nh3n) * ratioE,
+    backToEMg: n(toL.mg) * ratioE,
+    toLZ2,
+    toLZ2Mn: n(toL.mn) * ratioLZ2,
+    toLZ2Nh3n: n(toL.nh3n) * ratioLZ2,
+    toLZ2Mg: n(toL.mg) * ratioLZ2
   };
 }
 
@@ -1446,43 +1439,35 @@ function updateR() {
     water: n(r.water),
     mn: n(r.mn),
     nh3n: n(r.nh3n),
-    mg: n(r.mg)
+    mg: n(r.mg),
+    backToE: n(r.backToE),
+    backToEMn: n(r.backToEMn),
+    backToENh3n: n(r.backToENh3n),
+    backToEMg: n(r.backToEMg),
+    toLZ2: n(r.toLZ2),
+    toLZ2Mn: n(r.toLZ2Mn),
+    toLZ2Nh3n: n(r.toLZ2Nh3n),
+    toLZ2Mg: n(r.toLZ2Mg)
   };
 }
 
 function calcJ() {
   return cached('J', () => {
   const i = calcResults['I'] || notCalculated();
-  const jp = nodeById('J').params || { outSlagWater: 25 };
-  const jw = Number(jp.outSlagWater);
   const iDry = n(i.stayDry);
   const iWater = n(i.stayWater);
-  const iTotal = n(i.stayTotal);
-  const jTotal = iDry / (1 - jw / 100);
-  const jWater = jTotal - iDry;
-  const toL = Math.max(0, iWater - jWater);
-  const stayRatio = iWater > 0 ? jWater / iWater : 1;
-  const toLRatio  = iWater > 0 ? toL / iWater : 0;
-  // 溶质随水量分配，质量守恒
-  const mnMass   = iTotal * n(i.mn) / 100;
-  const nh3nMass = iTotal * n(i.nh3n) / 100;
-  const mgMass   = iTotal * n(i.mg) / 100;
-  const stayMn   = mnMass * stayRatio;
-  const stayNh3n = nh3nMass * stayRatio;
-  const stayMg   = mgMass * stayRatio;
-  const toLMn    = mnMass * toLRatio;
-  const toLNh3n  = nh3nMass * toLRatio;
-  const toLMg    = mgMass * toLRatio;
+  const stayTotal = iDry + iWater;
+  // J 直接承接二洗涤后的渣饼；洗涤去中转水已在 I 计算
   return {
-    total: jTotal,
+    total: stayTotal,
     dryWeight: iDry,
-    waterAbs: jWater,
-    toL: toL,
-    toLWater: { water: toL, mn: toLMn, nh3n: toLNh3n, mg: toLMg },
-    water: jTotal > 0 ? jWater / jTotal * 100 : 0,
-    mn: jTotal > 0 ? stayMn / jTotal * 100 : 0,
-    nh3n: jTotal > 0 ? stayNh3n / jTotal * 100 : 0,
-    mg: jTotal > 0 ? stayMg / jTotal * 100 : 0
+    waterAbs: iWater,
+    toL: 0,
+    toLWater: { water: 0, mn: 0, nh3n: 0, mg: 0 },
+    water: stayTotal > 0 ? iWater / stayTotal * 100 : 0,
+    mn: i.mn,
+    nh3n: i.nh3n,
+    mg: i.mg
   };
   });
 }
@@ -1517,9 +1502,9 @@ function saveParams(nodeId) {
       outNh3n: document.getElementById('p-blowOutNh3n').value
     };
   } else if (nodeId === 'D' || nodeId === 'H') {
-    n.params = { slagWater: document.getElementById('p-slagWater').value };
+    n.params = { slagWater: Number(document.getElementById('p-slagWater').value) };
   } else if (nodeId === 'E' || nodeId === 'I') {
-    n.params = { washEff: document.getElementById('p-washEff').value };
+    n.params = { washEff: Number(document.getElementById('p-washEff').value), washSlagWater: Number(document.getElementById('p-washSlagWater').value) };
   } else if (nodeId === 'F' || nodeId === 'J') {
     n.params = { outSlagWater: document.getElementById('p-outSlagWater').value };
   }
@@ -1547,14 +1532,14 @@ function runCalc(maxRounds = 20) {
   status.style.display = 'block';
   // 所有需要参数的节点都补默认值，避免 undefined 导致计算为 0/NaN
   const defaults = {
-    A: { total: 1000, water: 25, mn: 1, nh3n: 0.5, mg: 0.5 },
+    A: { total: 1333.33, water: 25, mn: 1, nh3n: 0.5, mg: 1.05 },
     C: { slagWaterRatio: 3 },
-    D: { slagWater: 40 },
-    E: { washEff: 80 },
+    D: { slagWater: 500 },
+    E: { washEff: 85 },
     F: { outSlagWater: 25 },
     G: { slagWaterRatio: 3 },
-    H: { slagWater: 40 },
-    I: { washEff: 80 },
+    H: { slagWater: 500 },
+    I: { washEff: 85, washSlagWater: 333.33 },
     J: { outSlagWater: 25 },
     L: { toN: 500, backToC: { water: 0, mn: 0, nh3n: 0, mg: 0 } },
     M: { blowRate: 20, outNh3n: 0 },
@@ -1574,8 +1559,10 @@ function runCalc(maxRounds = 20) {
     clearCalcCache();
     round++;
     lastCalcRound = round;
-      // 顺序写入 calcResults，保证下游函数读到上游最新值
+      // 保留上一轮 calcResults（T/G 等循环依赖需要），再依次覆盖更新
+      const prev = calcResults;
       calcResults = { A: nodeById('A').params };
+      Object.assign(calcResults, prev);
       calcResults.C = calcC();
       calcResults.D = calcD();
       calcResults.E = calcE();
