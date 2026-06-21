@@ -1,0 +1,61 @@
+flowchart TD
+    %% 颜色定义
+    classDef solid fill:#f9f,stroke:#333,stroke-width:2px;
+    classDef liquid fill:#bbf,stroke:#33f,stroke-width:1px,stroke-dasharray: 5 5;
+    classDef reagent fill:#bfb,stroke:#3a3,stroke-width:1px;
+    classDef product fill:#ff9,stroke:#f90,stroke-width:2px;
+
+    %% 资源化段
+    subgraph RESOURCE [资源化段]
+        A[原渣] --> C(资源化化浆)
+        C --> D(进料)
+        D -->|渣| E(洗涤)
+        E -->|渣| F(压榨、吹扫)
+    end
+
+    %% 无害化段
+    subgraph HARMLESS [无害化段]
+        F -->|渣| G(无害化化浆)
+        G --> H(进料)
+        H -->|渣| I(洗涤)
+        I -->|渣| J(压榨、吹扫)
+        J -->|渣| K[出渣]
+    end
+
+    %% 水处理及试剂段
+    subgraph WATER [水循环与回收]
+        L(中转桶)
+        R(洗涤中转)
+        M(吹脱)
+        N(沉锰)
+        O(碱化)
+        P(蒸氨)
+        Q(中和)
+        S[锰盐]
+    end
+
+    %% 水/液流向
+    D --> L
+    E -->|水| L
+    F -->|水| L
+    L -->|水| C
+    H -->|水| M
+    I -->|水| R
+    J -->|水| M
+    M -->|浆| G
+    Q -->|水| I
+    R --> E
+
+    %% 回收线
+    L --> N
+    N --> O
+    O --> P
+    P --> Q
+    P -->|渣| M
+    N --> S
+
+    %% 应用样式
+    class A,D,E,F,H,I,J,K solid;
+    class C,G,N,O,P,Q,R,S liquid;
+    class L,M reagent;
+    class S product;

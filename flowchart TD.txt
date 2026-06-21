@@ -1,0 +1,78 @@
+flowchart TD
+    %% ========== 节点样式定义 ==========
+    classDef solid fill:#000,stroke:#333,stroke-width:2px
+    classDef tank fill:#004,stroke:#339,stroke-width:1px
+    classDef reagent fill:#033,stroke:#393,stroke-width:1px
+    classDef product fill:#011,stroke:#f90,stroke-width:2px
+
+    %% ========== 资源化主线 ==========
+    A[原渣]:::solid --> C(资源化化浆):::tank
+    C --> D(进料):::solid
+    D -->|渣| E(洗涤):::solid
+    E -->|渣| F(压榨、吹扫):::solid
+
+    %% ========== 无害化主线 ==========
+    F -->|渣| G(无害化化浆):::tank
+    G --> H(进料):::solid
+    H -->|渣| I(洗涤):::solid
+    I -->|渣| J(压榨、吹扫):::solid
+    J -->|渣| K[出渣]:::solid
+
+    %% ========== 水循环及回收 ==========
+    %% 资源化段水回路
+    D -->|水| L(中转桶):::tank
+    E -->|水| L
+    F -->|水| L
+    L -->|水| C
+
+    %% 无害化段水回路
+    H --> M(吹脱):::tank
+    I -->|水| R(洗涤中转):::tank
+    J -->|水| M
+    M -->|浆| G
+    Q -->|水| I
+    R --> E
+
+    %% 回收线
+    L --> N(沉锰):::reagent
+    N --> O(碱化):::reagent
+    O --> P(蒸氨):::reagent
+    P --> Q(中和):::reagent
+    P -->|渣| M
+    N --> S[锰盐]:::product
+
+    %% ========== 连线逐条着色 ==========
+    %% 先计算连线索引（从0开始，按书写顺序）
+    %% 1:A->C  2:C->D  3:D->E(渣)  4:E->F(渣)  5:F->G(渣)  6:G->H
+    %% 7:H->I(渣)  8:I->J(渣)  9:J->K(渣)
+    %% 10:D->L  11:E->L(水)  12:F->L(水)  13:L->C(水)
+    %% 14:H->M  15:I->R(水)  16:J->M(水)  17:M->G(浆)  18:Q->I(水)
+    %% 19:R->E  20:L->N  21:N->O  22:O->P  23:P->Q  24:P->M(渣)  25:N->S
+
+    linkStyle 0 stroke:#d33,stroke-width:4px
+    linkStyle 1 stroke:#d33,stroke-width:4px  
+    linkStyle 2 stroke:#d33,stroke-width:4px  
+    linkStyle 3 stroke:#d33,stroke-width:4px   
+    linkStyle 4 stroke:#d33,stroke-width:4px   
+    linkStyle 5 stroke:#d33,stroke-width:4px  
+    linkStyle 6 stroke:#d33,stroke-width:4px    
+    linkStyle 7 stroke:#d33,stroke-width:4px     
+    linkStyle 8 stroke:#d33,stroke-width:4px     
+
+    linkStyle 9 stroke:#339,stroke-width:1.5px,stroke-dasharray:5  
+    linkStyle 10 stroke:#393,stroke-width:3.5px,stroke-dasharray:5 
+    linkStyle 11 stroke:#339,stroke-width:1.5px,stroke-dasharray:5 
+    linkStyle 12 stroke:#F0F,stroke-width:3.5px,stroke-dasharray:5 
+    linkStyle 13 stroke:#339,stroke-width:1.5px,stroke-dasharray:5 
+    linkStyle 14 stroke:#393,stroke-width:3.5px,stroke-dasharray:5 
+    linkStyle 15 stroke:#339,stroke-width:1.5px,stroke-dasharray:5 
+    linkStyle 16 stroke:#f0f,stroke-width:3.5px           
+    linkStyle 17 stroke:#393,stroke-width:3.5px,stroke-dasharray:5 
+    linkStyle 18 stroke:#393,stroke-width:3.5px,stroke-dasharray:5 
+
+    linkStyle 19 stroke:#393,stroke-width:1.5px           
+    linkStyle 20 stroke:#393,stroke-width:1.5px          
+    linkStyle 21 stroke:#393,stroke-width:1.5px          
+    linkStyle 22 stroke:#393,stroke-width:1.5px          
+    linkStyle 23 stroke:#d33,stroke-width:2px            
+    linkStyle 24 stroke:#f90,stroke-width:2px            
